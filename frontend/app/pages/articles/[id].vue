@@ -37,10 +37,14 @@ import { computed } from 'vue';
 const route = useRoute();
 const id = parseInt(route.params.id);
 
+// 获取运行时配置
+const runtimeConfig = useRuntimeConfig();
+const apiBaseUrl = runtimeConfig.public.apiBaseUrl;
+
 // 获取文章详情数据
 const { data: article } = await useAsyncData(`article-${id}`, async () => {
   // 从后端API获取文章详情
-  const response = await fetch(`http://localhost:8000/api/articles/${id}`);
+  const response = await fetch(`${apiBaseUrl}/articles/${id}`);
   if (!response.ok) {
     throw new Error('Failed to fetch article');
   }
@@ -49,19 +53,179 @@ const { data: article } = await useAsyncData(`article-${id}`, async () => {
 
 // 设置页面元数据
 useHead({
-  title: computed(() => article.value?.title || '文章详情 - Nuxt 4 SSR Demo')
+  title: computed(() => article.value?.title || '文章详情 - Nuxt 4 SSR Demo'),
+  meta: [
+    { 
+      name: 'description', 
+      content: computed(() => article.value?.excerpt || 'Nuxt 4 SSR 文章详情') 
+    },
+    { 
+      name: 'keywords', 
+      content: computed(() => {
+        if (!article.value) return 'Nuxt, SSR, Vue';
+        // 从文章内容中提取关键词（简单示例）
+        const content = article.value.content.toLowerCase();
+        const keywords = [];
+        
+        // 检查常见技术关键词
+        const techKeywords = ['nuxt', 'vue', 'ssr', 'server-side rendering', '前端', 'web开发', 'javascript', 'typescript', '前端开发'];
+        for (const keyword of techKeywords) {
+          if (content.includes(keyword)) {
+            keywords.push(keyword);
+          }
+        }
+        
+        // 如果没有匹配的关键词，使用默认值
+        return keywords.length > 0 ? keywords.join(', ') : 'Nuxt, SSR, Vue, 前端开发';
+      }) 
+    },
+    // Open Graph 标签（用于社交媒体分享）
+    { 
+      property: 'og:title', 
+      content: computed(() => article.value?.title || '文章详情 - Nuxt 4 SSR Demo') 
+    },
+    { 
+      property: 'og:description', 
+      content: computed(() => article.value?.excerpt || 'Nuxt 4 SSR 文章详情') 
+    },
+    { 
+      property: 'og:type', 
+      content: 'article' 
+    },
+    { 
+      property: 'og:url', 
+      content: computed(() => `https://site.com/articles/${id}`) 
+    },
+    { 
+      property: 'og:site_name', 
+      content: 'Nuxt 4 SSR Demo' 
+    },
+    { 
+      property: 'og:locale', 
+      content: 'zh_CN' 
+    },
+    { 
+      property: 'og:image', 
+      content: computed(() => article.value?.image || 'https://site.com/og-image.jpg') 
+    },
+    // 文章特定的 Open Graph 标签
+    { 
+      property: 'article:section', 
+      content: computed(() => article.value?.category || '技术博客') 
+    },
+    { 
+      property: 'article:published_time', 
+      content: computed(() => article.value?.created ? new Date(article.value.created).toISOString() : '') 
+    },
+    { 
+      property: 'article:modified_time', 
+      content: computed(() => article.value?.updated ? new Date(article.value.updated).toISOString() : '') 
+    },
+    { 
+      property: 'article:author', 
+      content: computed(() => article.value?.author || 'Nuxt 4 SSR Demo') 
+    },
+    // Twitter 卡片标签
+    { 
+      name: 'twitter:card', 
+      content: 'summary_large_image' 
+    },
+    { 
+      name: 'twitter:title', 
+      content: computed(() => article.value?.title || '文章详情 - Nuxt 4 SSR Demo') 
+    },
+    { 
+      name: 'twitter:description', 
+      content: computed(() => article.value?.excerpt || 'Nuxt 4 SSR 文章详情') 
+    },
+    { 
+      name: 'twitter:image', 
+      content: computed(() => article.value?.image || 'https://site.com/og-image.jpg') 
+    },
+    { 
+      name: 'twitter:site', 
+      content: '@NuxtDemo' 
+    },
+    { 
+      name: 'twitter:creator', 
+      content: computed(() => article.value?.author || '@NuxtDemo') 
+    }
+  ],
+  // 结构化数据 - 使用script选项注入JSON-LD
+  script: [
+    { 
+      type: 'application/ld+json',
+      // 使用innerHTML而不是content，因为content会被转义
+      innerHTML: computed(() => jsonLd.value),
+      // 确保脚本只在服务端渲染时添加
+      once: true
+    }
+  ]
 });
 
 // 获取相关文章（从所有文章中筛选）
 const { data: relatedArticles } = await useAsyncData(`related-articles-${id}`, async () => {
   // 从后端API获取所有文章
-  const response = await fetch('http://localhost:8000/api/articles');
+  const response = await fetch(`${apiBaseUrl}/articles`);
   if (!response.ok) {
     throw new Error('Failed to fetch related articles');
   }
   const allArticles = await response.json();
   // 筛选出除当前文章外的前2篇作为相关文章
   return allArticles.filter(a => a.id !== id).slice(0, 2);
+});
+
+// 生成结构化数据
+const jsonLd = computed(() => {
+  if (!article.value) return '';
+  
+  // 计算阅读时间（假设平均阅读速度为每分钟200个字）
+  const contentWords = article.value.content?.split(/\s+/).length || 0;
+  const readTimeMinutes = Math.ceil(contentWords / 200);
+  
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": article.value.title,
+    "description": article.value.excerpt,
+    "datePublished": article.value.created ? new Date(article.value.created).toISOString() : new Date().toISOString(),
+    "dateModified": article.value.updated ? new Date(article.value.updated).toISOString() : (article.value.created ? new Date(article.value.created).toISOString() : new Date().toISOString()),
+    "articleSection": article.value.category || "技术博客",
+    "wordCount": contentWords,
+    "timeRequired": `PT${readTimeMinutes}M`, // ISO 8601 格式的阅读时间
+    "author": {
+      "@type": "Person",
+      "name": article.value.author || "Nuxt 4 SSR Demo",
+      "url": "https://site.com/author"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Nuxt 4 SSR Demo",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://site.com/logo.png",
+        "width": 600,
+        "height": 60
+      }
+    },
+    "image": {
+      "@type": "ImageObject",
+      "url": article.value.image || "https://site.com/og-image.jpg",
+      "width": 1200,
+      "height": 630,
+      "caption": article.value.title
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `https://site.com/articles/${id}`
+    },
+    "inLanguage": "zh-CN",
+    "isAccessibleForFree": true, // 表示内容是免费访问的
+    "license": "https://creativecommons.org/licenses/by/4.0/", // 示例许可证
+    "keywords": article.value.tags || [] // 如果有标签的话
+  };
+  
+  return JSON.stringify(data);
 });
 
 // 模拟Markdown渲染
