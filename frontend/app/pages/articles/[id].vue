@@ -49,6 +49,114 @@ const { data: article } = await useAsyncData(`article-${id}`, async () => {
     throw new Error('Failed to fetch article');
   }
   return await response.json();
+}, {
+  // API失败时的默认值
+  default: () => ({
+    id: id,
+    title: '默认文章标题 - Nuxt 4 SSR Demo',
+    excerpt: '这是一篇默认的文章摘要，用于演示Nuxt 4 SSR的动态SEO功能。',
+    content: '# 默认文章标题\n\n这是一篇默认的文章内容，用于演示Nuxt 4 SSR的动态SEO功能。\n\n## 章节标题\n\n这是章节内容。',
+    date: new Date().toLocaleDateString('zh-CN'),
+    image: 'https://site.com/og-image.jpg',
+    author: 'Nuxt 4 SSR Demo',
+    category: '技术博客',
+    created: new Date().toISOString(),
+    updated: new Date().toISOString(),
+    tags: ['Nuxt', 'SSR', 'Vue']
+  })
+});
+
+// 生成结构化数据
+const jsonLd = computed(() => {
+  // 确保article.value存在，否则返回空字符串
+  if (!article.value) return '';
+  
+  // 获取必要的属性，确保所有值都有合理的默认值
+  const title = article.value.title || '默认文章标题';
+  const excerpt = article.value.excerpt || '';
+  const content = article.value.content || '';
+  const imageUrl = article.value.image || 'https://site.com/og-image.jpg';
+  const authorName = article.value.author || 'Nuxt 4 SSR Demo';
+  const category = article.value.category || '技术博客';
+  const tags = article.value.tags || [];
+  
+  // 计算阅读时间（假设平均阅读速度为每分钟200个字）
+  const contentWords = content.split(/\s+/).length || 0;
+  const readTimeMinutes = Math.ceil(contentWords / 200);
+  
+  // 处理日期
+  const createdDate = article.value.created ? new Date(article.value.created).toISOString() : new Date().toISOString();
+  const updatedDate = article.value.updated ? new Date(article.value.updated).toISOString() : createdDate;
+  
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": title,
+    "description": excerpt,
+    "datePublished": createdDate,
+    "dateModified": updatedDate,
+    "articleSection": category,
+    "wordCount": contentWords,
+    "timeRequired": `PT${readTimeMinutes}M`, // ISO 8601 格式的阅读时间
+    "author": {
+      "@type": "Person",
+      "name": authorName,
+      "url": "https://site.com/author"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Nuxt 4 SSR Demo",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://site.com/logo.png",
+        "width": 600,
+        "height": 60
+      }
+    },
+    "image": {
+      "@type": "ImageObject",
+      "url": imageUrl,
+      "width": 1200,
+      "height": 630,
+      "caption": title
+    },
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": `https://site.com/articles/${id}`
+    },
+    "inLanguage": "zh-CN",
+    "isAccessibleForFree": true, // 表示内容是免费访问的
+    "license": "https://creativecommons.org/licenses/by/4.0/", // 示例许可证
+    "keywords": tags // 如果有标签的话
+  };
+  
+  return JSON.stringify(data);
+});
+
+// 获取相关文章（从所有文章中筛选）
+const { data: relatedArticles } = await useAsyncData(`related-articles-${id}`, async () => {
+  // 从后端API获取所有文章
+  const response = await fetch(`${apiBaseUrl}/articles`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch related articles');
+  }
+  const allArticles = await response.json();
+  // 筛选出除当前文章外的前2篇作为相关文章
+  return allArticles.filter(a => a.id !== id).slice(0, 2);
+}, {
+  // API失败时的默认值
+  default: () => [
+    {
+      id: 1,
+      title: '相关文章标题1',
+      date: new Date().toLocaleDateString('zh-CN')
+    },
+    {
+      id: 2,
+      title: '相关文章标题2',
+      date: new Date().toLocaleDateString('zh-CN')
+    }
+  ]
 });
 
 // 设置页面元数据
@@ -115,11 +223,17 @@ useHead({
     },
     { 
       property: 'article:published_time', 
-      content: computed(() => article.value?.created ? new Date(article.value.created).toISOString() : '') 
+      content: computed(() => {
+        if (!article.value || !article.value.created) return '';
+        return new Date(article.value.created).toISOString();
+      }) 
     },
     { 
       property: 'article:modified_time', 
-      content: computed(() => article.value?.updated ? new Date(article.value.updated).toISOString() : '') 
+      content: computed(() => {
+        if (!article.value || !article.value.updated) return '';
+        return new Date(article.value.updated).toISOString();
+      }) 
     },
     { 
       property: 'article:author', 
@@ -153,79 +267,14 @@ useHead({
   ],
   // 结构化数据 - 使用script选项注入JSON-LD
   script: [
-    { 
+    {
       type: 'application/ld+json',
       // 使用innerHTML而不是content，因为content会被转义
-      innerHTML: computed(() => jsonLd.value),
+      innerHTML: jsonLd,
       // 确保脚本只在服务端渲染时添加
       once: true
     }
   ]
-});
-
-// 获取相关文章（从所有文章中筛选）
-const { data: relatedArticles } = await useAsyncData(`related-articles-${id}`, async () => {
-  // 从后端API获取所有文章
-  const response = await fetch(`${apiBaseUrl}/articles`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch related articles');
-  }
-  const allArticles = await response.json();
-  // 筛选出除当前文章外的前2篇作为相关文章
-  return allArticles.filter(a => a.id !== id).slice(0, 2);
-});
-
-// 生成结构化数据
-const jsonLd = computed(() => {
-  if (!article.value) return '';
-  
-  // 计算阅读时间（假设平均阅读速度为每分钟200个字）
-  const contentWords = article.value.content?.split(/\s+/).length || 0;
-  const readTimeMinutes = Math.ceil(contentWords / 200);
-  
-  const data = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": article.value.title,
-    "description": article.value.excerpt,
-    "datePublished": article.value.created ? new Date(article.value.created).toISOString() : new Date().toISOString(),
-    "dateModified": article.value.updated ? new Date(article.value.updated).toISOString() : (article.value.created ? new Date(article.value.created).toISOString() : new Date().toISOString()),
-    "articleSection": article.value.category || "技术博客",
-    "wordCount": contentWords,
-    "timeRequired": `PT${readTimeMinutes}M`, // ISO 8601 格式的阅读时间
-    "author": {
-      "@type": "Person",
-      "name": article.value.author || "Nuxt 4 SSR Demo",
-      "url": "https://site.com/author"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Nuxt 4 SSR Demo",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://site.com/logo.png",
-        "width": 600,
-        "height": 60
-      }
-    },
-    "image": {
-      "@type": "ImageObject",
-      "url": article.value.image || "https://site.com/og-image.jpg",
-      "width": 1200,
-      "height": 630,
-      "caption": article.value.title
-    },
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": `https://site.com/articles/${id}`
-    },
-    "inLanguage": "zh-CN",
-    "isAccessibleForFree": true, // 表示内容是免费访问的
-    "license": "https://creativecommons.org/licenses/by/4.0/", // 示例许可证
-    "keywords": article.value.tags || [] // 如果有标签的话
-  };
-  
-  return JSON.stringify(data);
 });
 
 // 模拟Markdown渲染
