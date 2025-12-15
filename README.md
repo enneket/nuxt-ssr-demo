@@ -68,6 +68,8 @@ npm run build
 cd frontend
 npm run generate
 # 生成的静态文件将放在 .output/public 目录
+# 预览静态站点
+npx serve frontend/.output/public
 ```
 
 ## API 接口
