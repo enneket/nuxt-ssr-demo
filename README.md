@@ -41,7 +41,19 @@ cd backend
 go mod tidy
 ```
 
-### 2. 运行项目
+### 2. 配置环境变量
+
+复制前端环境变量示例文件：
+```bash
+cd frontend
+cp .env.example .env
+```
+
+根据实际情况修改 `.env` 文件中的配置：
+- `NUXT_PUBLIC_API_BASE_URL`: 后端 API 地址（默认：http://localhost:8000/api）
+- `NUXT_PUBLIC_SITE_URL`: 站点 URL（默认：http://localhost:3001）
+
+### 3. 运行项目
 
 #### 启动后端服务
 ```bash

@@ -1,7 +1,20 @@
 <template>
   <div class="articles-container">
     <h1>文章列表</h1>
-    <div class="articles-list">
+    
+    <!-- 错误提示 -->
+    <div v-if="error" class="error-message">
+      <p>⚠️ 加载文章失败，请稍后重试</p>
+      <p class="error-detail">{{ error.message }}</p>
+    </div>
+    
+    <!-- 加载中 -->
+    <div v-else-if="!articles" class="loading">
+      <p>加载中...</p>
+    </div>
+    
+    <!-- 文章列表 -->
+    <div v-else class="articles-list">
       <div v-for="article in articles" :key="article.id" class="article-card">
         <NuxtLink :to="`/articles/${article.id}`">
           <h2>{{ article.title }}</h2>
@@ -10,6 +23,7 @@
         </NuxtLink>
       </div>
     </div>
+    
     <NuxtLink to="/" class="back-link">← 返回首页</NuxtLink>
   </div>
 </template>
@@ -25,14 +39,22 @@ useHead({
   ]
 });
 
+// 获取运行时配置
+const runtimeConfig = useRuntimeConfig();
+const apiBaseUrl = runtimeConfig.public.apiBaseUrl;
+
 // 获取文章列表数据
-const { data: articles } = await useAsyncData('articles', async () => {
-  // 从后端API获取文章列表
-  const response = await fetch('http://localhost:8000/api/articles');
-  if (!response.ok) {
-    throw new Error('Failed to fetch articles');
+const { data: articles, error } = await useAsyncData('articles', async () => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/articles`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch articles');
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error fetching articles:', err);
+    throw err;
   }
-  return await response.json();
 });
 </script>
 
@@ -100,5 +122,31 @@ h1 {
 
 .back-link:hover {
   text-decoration: underline;
+}
+
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.error-message p {
+  margin: 10px 0;
+  color: #c33;
+}
+
+.error-detail {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #667eea;
+  font-size: 1.2rem;
 }
 </style>

@@ -3,10 +3,13 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@nuxtjs/sitemap'],
-  site: { url: 'https://site.com' },
+  site: { 
+    url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3001'
+  },
   runtimeConfig: {
     public: {
-      apiBaseUrl: 'http://localhost:8000/api' // 使用默认值，部署时可通过环境变量覆盖
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api',
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3001'
     }
   },
   sitemap: {
@@ -37,8 +40,8 @@ export default defineNuxtConfig({
       
       // 添加动态文章路由
       try {
-        // 在构建时使用配置的API地址，从runtimeConfig获取
-        const apiBaseUrl = 'http://localhost:8000/api'; // 从runtimeConfig获取或使用默认值
+        // 从环境变量获取 API 地址
+        const apiBaseUrl = process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
         const apiUrl = `${apiBaseUrl}/articles`;
         const response = await fetch(apiUrl);
         if (response.ok) {

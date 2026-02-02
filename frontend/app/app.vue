@@ -16,7 +16,7 @@
 </template>
 
 <script setup>
-const { useAsyncData, useHead } = await import('#app');
+const { useHead } = await import('#app');
 
 // 设置页面元数据
 useHead({
@@ -24,29 +24,6 @@ useHead({
   meta: [
     { name: 'description', content: '这是一个 Nuxt 4 SSR 演示项目，展示了服务器端渲染的核心特性和优势' }
   ]
-});
-
-// 服务器端数据获取
-const { data: serverData } = await useAsyncData('serverData', async () => {
-  // 模拟从数据库获取数据
-  const databaseData = {
-    currentUser: 'Demo User',
-    sessionId: `session_${Math.random().toString(36).substr(2, 9)}`
-  };
-
-  // 模拟调用外部API（这里使用静态数据模拟）
-  const externalApiData = {
-    apiName: '模拟天气API',
-    temperature: `${Math.round(15 + Math.random() * 10)}°C`,
-    description: ['晴天', '多云', '阴天', '小雨'][Math.floor(Math.random() * 4)]
-  };
-
-  return {
-    time: new Date().toLocaleString('zh-CN'),
-    serverInfo: `Node.js ${process.version}`,
-    ...databaseData,
-    ...externalApiData
-  };
 });
 </script>
 

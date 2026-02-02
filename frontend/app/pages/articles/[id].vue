@@ -1,12 +1,28 @@
 <template>
   <div class="article-detail">
-    <div v-if="article" class="article-content">
+    <!-- 错误提示 -->
+    <div v-if="articleError" class="error-message">
+      <h2>⚠️ 加载文章失败</h2>
+      <p>{{ articleError.message }}</p>
+      <div class="error-actions">
+        <NuxtLink to="/articles" class="back-link">← 返回文章列表</NuxtLink>
+        <NuxtLink to="/" class="home-link">返回首页</NuxtLink>
+      </div>
+    </div>
+    
+    <!-- 加载中 -->
+    <div v-else-if="!article" class="loading">
+      <p>加载中...</p>
+    </div>
+    
+    <!-- 文章内容 -->
+    <div v-else class="article-content">
       <h1>{{ article.title }}</h1>
       <p class="article-date">{{ article.date }}</p>
       <div class="article-body" v-html="renderMarkdown(article.content)"></div>
       
       <!-- 相关文章 -->
-      <div class="related-articles">
+      <div v-if="relatedArticles && relatedArticles.length > 0" class="related-articles">
         <h2>相关文章</h2>
         <div class="related-list">
           <div v-for="related in relatedArticles" :key="related.id" class="related-card">
@@ -22,9 +38,6 @@
         <NuxtLink to="/articles" class="back-link">← 返回文章列表</NuxtLink>
         <NuxtLink to="/" class="home-link">返回首页</NuxtLink>
       </div>
-    </div>
-    <div v-else class="loading">
-      加载中...
     </div>
   </div>
 </template>
@@ -42,28 +55,17 @@ const runtimeConfig = useRuntimeConfig();
 const apiBaseUrl = runtimeConfig.public.apiBaseUrl;
 
 // 获取文章详情数据
-const { data: article } = await useAsyncData(`article-${id}`, async () => {
-  // 从后端API获取文章详情
-  const response = await fetch(`${apiBaseUrl}/articles/${id}`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch article');
+const { data: article, error: articleError } = await useAsyncData(`article-${id}`, async () => {
+  try {
+    const response = await fetch(`${apiBaseUrl}/articles/${id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch article');
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Error fetching article:', err);
+    throw err;
   }
-  return await response.json();
-}, {
-  // API失败时的默认值
-  default: () => ({
-    id: id,
-    title: '默认文章标题 - Nuxt 4 SSR Demo',
-    excerpt: '这是一篇默认的文章摘要，用于演示Nuxt 4 SSR的动态SEO功能。',
-    content: '# 默认文章标题\n\n这是一篇默认的文章内容，用于演示Nuxt 4 SSR的动态SEO功能。\n\n## 章节标题\n\n这是章节内容。',
-    date: new Date().toLocaleDateString('zh-CN'),
-    image: 'https://site.com/og-image.jpg',
-    author: 'Nuxt 4 SSR Demo',
-    category: '技术博客',
-    created: new Date().toISOString(),
-    updated: new Date().toISOString(),
-    tags: ['Nuxt', 'SSR', 'Vue']
-  })
 });
 
 // 生成结构化数据
@@ -71,11 +73,15 @@ const jsonLd = computed(() => {
   // 确保article.value存在，否则返回空字符串
   if (!article.value) return '';
   
+  // 获取运行时配置
+  const runtimeConfig = useRuntimeConfig();
+  const siteUrl = runtimeConfig.public.siteUrl;
+  
   // 获取必要的属性，确保所有值都有合理的默认值
   const title = article.value.title || '默认文章标题';
   const excerpt = article.value.excerpt || '';
   const content = article.value.content || '';
-  const imageUrl = article.value.image || 'https://site.com/og-image.jpg';
+  const imageUrl = article.value.image || `${siteUrl}/og-image.jpg`;
   const authorName = article.value.author || 'Nuxt 4 SSR Demo';
   const category = article.value.category || '技术博客';
   const tags = article.value.tags || [];
@@ -101,14 +107,14 @@ const jsonLd = computed(() => {
     "author": {
       "@type": "Person",
       "name": authorName,
-      "url": "https://site.com/author"
+      "url": `${siteUrl}/author`
     },
     "publisher": {
       "@type": "Organization",
       "name": "Nuxt 4 SSR Demo",
       "logo": {
         "@type": "ImageObject",
-        "url": "https://site.com/logo.png",
+        "url": `${siteUrl}/logo.png`,
         "width": 600,
         "height": 60
       }
@@ -122,7 +128,7 @@ const jsonLd = computed(() => {
     },
     "mainEntityOfPage": {
       "@type": "WebPage",
-      "@id": `https://site.com/articles/${id}`
+      "@id": `${siteUrl}/articles/${id}`
     },
     "inLanguage": "zh-CN",
     "isAccessibleForFree": true, // 表示内容是免费访问的
@@ -135,29 +141,23 @@ const jsonLd = computed(() => {
 
 // 获取相关文章（从所有文章中筛选）
 const { data: relatedArticles } = await useAsyncData(`related-articles-${id}`, async () => {
-  // 从后端API获取所有文章
-  const response = await fetch(`${apiBaseUrl}/articles`);
-  if (!response.ok) {
-    throw new Error('Failed to fetch related articles');
-  }
-  const allArticles = await response.json();
-  // 筛选出除当前文章外的前2篇作为相关文章
-  return allArticles.filter(a => a.id !== id).slice(0, 2);
-}, {
-  // API失败时的默认值
-  default: () => [
-    {
-      id: 1,
-      title: '相关文章标题1',
-      date: new Date().toLocaleDateString('zh-CN')
-    },
-    {
-      id: 2,
-      title: '相关文章标题2',
-      date: new Date().toLocaleDateString('zh-CN')
+  try {
+    const response = await fetch(`${apiBaseUrl}/articles`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch related articles');
     }
-  ]
+    const allArticles = await response.json();
+    // 筛选出除当前文章外的前2篇作为相关文章
+    return allArticles.filter(a => a.id !== id).slice(0, 2);
+  } catch (err) {
+    console.error('Error fetching related articles:', err);
+    // 失败时返回空数组
+    return [];
+  }
 });
+
+// 获取站点 URL
+const siteUrl = runtimeConfig.public.siteUrl;
 
 // 设置页面元数据
 useHead({
@@ -202,7 +202,7 @@ useHead({
     },
     { 
       property: 'og:url', 
-      content: computed(() => `https://site.com/articles/${id}`) 
+      content: computed(() => `${siteUrl}/articles/${id}`) 
     },
     { 
       property: 'og:site_name', 
@@ -214,7 +214,7 @@ useHead({
     },
     { 
       property: 'og:image', 
-      content: computed(() => article.value?.image || 'https://site.com/og-image.jpg') 
+      content: computed(() => article.value?.image || `${siteUrl}/og-image.jpg`) 
     },
     // 文章特定的 Open Graph 标签
     { 
@@ -254,7 +254,7 @@ useHead({
     },
     { 
       name: 'twitter:image', 
-      content: computed(() => article.value?.image || 'https://site.com/og-image.jpg') 
+      content: computed(() => article.value?.image || `${siteUrl}/og-image.jpg`) 
     },
     { 
       name: 'twitter:site', 
@@ -406,5 +406,32 @@ const renderMarkdown = (content) => {
   font-style: italic;
   text-align: center;
   font-size: 1.2rem;
+  padding: 40px;
+}
+
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  padding: 40px;
+  margin: 20px;
+  text-align: center;
+}
+
+.error-message h2 {
+  color: #c33;
+  margin-top: 0;
+}
+
+.error-message p {
+  color: #666;
+  margin: 20px 0;
+}
+
+.error-actions {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 30px;
 }
 </style>
