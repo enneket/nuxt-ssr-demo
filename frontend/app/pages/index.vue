@@ -59,14 +59,35 @@
       <div v-else class="loading">加载中...</div>
     </section>
 
-    <!-- 文章入口 -->
-    <div class="articles-link">
-      <h2>文章列表</h2>
-      <div class="articles-intro">
-        <p>查看完整的文章列表，了解更多关于Nuxt 4 SSR的技术细节和最佳实践。</p>
-        <NuxtLink to="/articles" class="articles-button">查看文章列表</NuxtLink>
+    <!-- SSR 功能演示入口 -->
+    <section>
+      <h2>🎯 SSR 功能演示</h2>
+      <div class="demo-links-grid">
+        <NuxtLink to="/ssr-demo" class="demo-link-card">
+          <div class="demo-icon">💧</div>
+          <h3>水合演示</h3>
+          <p>了解服务端渲染如何在客户端"激活"</p>
+        </NuxtLink>
+        
+        <NuxtLink to="/cache-demo" class="demo-link-card">
+          <div class="demo-icon">🔄</div>
+          <h3>缓存策略</h3>
+          <p>探索 Nuxt 的数据缓存和管理机制</p>
+        </NuxtLink>
+        
+        <NuxtLink to="/performance" class="demo-link-card">
+          <div class="demo-icon">⚡</div>
+          <h3>性能监控</h3>
+          <p>查看 SSR 的性能指标和优势</p>
+        </NuxtLink>
+        
+        <NuxtLink to="/articles" class="demo-link-card">
+          <div class="demo-icon">📝</div>
+          <h3>文章列表</h3>
+          <p>查看完整的文章列表和 SEO 优化</p>
+        </NuxtLink>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -211,5 +232,46 @@ const { data: serverData } = await useAsyncData('serverData', async () => {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   text-decoration: none;
   color: white;
+}
+
+.demo-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.demo-link-card {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.demo-link-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.demo-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.demo-link-card h3 {
+  margin: 0 0 10px 0;
+  color: #667eea;
+  font-size: 1.3rem;
+}
+
+.demo-link-card p {
+  margin: 0;
+  color: #666;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 </style>

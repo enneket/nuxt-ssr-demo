@@ -11,16 +11,18 @@ ssr-demo/
 │   └── go.mod          # Go 模块文件
 ├── frontend/           # Nuxt 4 前端应用
 │   ├── app/            # 应用源码
-│   │   ├── components/ # 组件目录
-│   │   ├── data/       # 数据文件
 │   │   ├── pages/      # 页面目录
 │   │   │   ├── index.vue          # 首页
+│   │   │   ├── ssr-demo.vue       # SSR 水合演示
+│   │   │   ├── cache-demo.vue     # 缓存策略演示
+│   │   │   ├── performance.vue    # 性能监控面板
 │   │   │   └── articles/          # 文章相关页面
 │   │   │       ├── index.vue      # 文章列表页
-│   │   │       └── [id].vue        # 文章详情页
+│   │   │       └── [id].vue       # 文章详情页
 │   │   └── app.vue                # 根组件
 │   ├── nuxt.config.ts             # Nuxt 配置
 │   ├── package.json               # 项目依赖
+│   ├── .env.example               # 环境变量示例
 │   └── public/                    # 静态资源
 └── README.md                      # 项目文档
 ```
@@ -83,6 +85,23 @@ npm run generate
 # 预览静态站点
 npx serve frontend/.output/public
 ```
+
+## 功能特性
+
+### SSR 核心功能演示
+- **水合（Hydration）演示**：展示服务端渲染内容如何在客户端激活
+- **缓存策略演示**：演示 `useAsyncData` 的缓存机制和数据管理
+- **性能监控面板**：实时显示 TTFB、FCP、LCP 等性能指标
+
+### 文章系统
+- 文章列表页面
+- 文章详情页面（动态路由）
+- 完整的 SEO 优化（meta 标签、Open Graph、JSON-LD）
+
+### SEO 优化
+- 动态生成 sitemap
+- 每个页面独立的 meta 标签
+- 结构化数据（Schema.org）
 
 ## API 接口
 
